@@ -804,7 +804,11 @@ RCT_EXPORT_METHOD(call_getStats:(NSString *)uuid
     TVOCall *call = self.callMap[uuid];
     if (call) {
         [call getStatsWithBlock:^(NSArray<TVOStatsReport *> *statsReports) {
-            NSAssert([statsReports count] >= 1, @"Invalid stats reports array size");
+            if ([statsReports count] >= 1) {
+                reject(kTwilioVoiceReactNativeVoiceError, @"Invalid stats reports array size", nil);
+                return;
+            }
+
             NSArray *statsReportJson = [TwilioVoiceStatsReport jsonWithStatsReportsArray:statsReports];
             resolve(statsReportJson);
         }];

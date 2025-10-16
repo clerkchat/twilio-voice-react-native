@@ -57,7 +57,10 @@ class CallListenerProxy implements Call.Listener {
     getAudioSwitchManager().getAudioSwitch().deactivate();
 
     // find call record & remove
-    CallRecord callRecord = Objects.requireNonNull(getCallRecordDatabase().remove(new CallRecord(uuid)));
+    CallRecord callRecord = getCallRecordDatabase().remove(new CallRecord(uuid));
+    if (callRecord == null) {
+      return;
+    }
 
     // take down notification
     getVoiceServiceApi().cancelActiveCallNotification(callRecord);

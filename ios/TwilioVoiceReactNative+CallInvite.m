@@ -36,7 +36,11 @@
             break;
         }
     }
-    NSAssert(uuid, @"No matching call invite");
+
+    if (!uuid) {
+        return;
+    }
+
     self.cancelledCallInviteMap[uuid] = cancelledCallInvite;
 
     [self sendEventWithName:kTwilioVoiceReactNativeScopeCallInvite
