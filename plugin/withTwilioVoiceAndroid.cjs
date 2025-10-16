@@ -4,21 +4,33 @@ const {
   withMainApplication,
   withMainActivity,
 } = require('@expo/config-plugins');
-const { findFunctionIndexes, appendToClass, prependToClass, prependToFunction, appendToFunction } = require('./kotlinUtils.cjs');
+const {
+  findFunctionIndexes,
+  appendToClass,
+  prependToClass,
+  prependToFunction,
+  appendToFunction,
+} = require('./kotlinUtils.cjs');
 
-const modApplicationImports = ['com.twiliovoicereactnative.VoiceApplicationProxy'];
+const modApplicationImports = [
+  'com.twiliovoicereactnative.VoiceApplicationProxy',
+];
 const modApplicationValDeclaration = 'private val voiceApplicationProxy';
 const modApplicationVal = `
   ${modApplicationValDeclaration}: VoiceApplicationProxy = VoiceApplicationProxy(this)
 `;
-const modApplicationOnCreateProxyCall = 'voiceApplicationProxy.onCreate()';
+const modApplicationOnCreateProxyCall = `
+    voiceApplicationProxy.onCreate()
+`;
 const modApplicationOnCreateFn = `
   override fun onCreate() {
     super.onCreate()
     ${modApplicationOnCreateProxyCall}
   }
 `;
-const modApplicationOnTerminateProxyCall = 'voiceApplicationProxy.onTerminate()';
+const modApplicationOnTerminateProxyCall = `
+    voiceApplicationProxy.onTerminate()
+`;
 const modApplicationOnTerminateFn = `
   override fun onTerminate() {
     ${modApplicationOnTerminateProxyCall}
@@ -43,27 +55,33 @@ const modActivityVal = `
       }
   }
 `;
-const modActivityOnCreateProxyCall = 'activityProxy.onCreate(savedInstanceState)';
+const modActivityOnCreateProxyCall = `
+    activityProxy.onCreate(savedInstanceState)
+`;
 const modActivityOnCreateFn = `
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(null)
     ${modActivityOnCreateProxyCall}
   }
 `;
-const modActivityOnDestroyProxyCall = 'activityProxy.onDestroy()';
+const modActivityOnDestroyProxyCall = `
+    activityProxy.onDestroy()
+`;
 const modActivityOnDestroyFn = `
   override fun onDestroy() {
     ${modActivityOnDestroyProxyCall}
     super.onDestroy()
   }
 `;
-const modActivityOnNewIntentProxyCall = 'activityProxy.onNewIntent(intent)';
+const modActivityOnNewIntentProxyCall = `
+    activityProxy.onNewIntent(intent)
+`;
 const modActivityOnNewIntentFn = `
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     ${modActivityOnNewIntentProxyCall}
   }
-`
+`;
 
 function withTwilioVoiceAndroid(config) {
   // Add required permissions
@@ -84,41 +102,55 @@ function withTwilioVoiceAndroid(config) {
   ]);
 
   // Add services to AndroidManifest.xml
-  config = withAndroidManifest(config, config => {
+  config = withAndroidManifest(config, (config) => {
     const androidManifest = config.modResults;
-    const mainApplication = AndroidConfig.Manifest.getMainApplicationOrThrow(androidManifest);
+    const mainApplication =
+      AndroidConfig.Manifest.getMainApplicationOrThrow(androidManifest);
 
     // Add VoiceFirebaseMessagingService
-    if (!mainApplication.service?.some(service => 
-      service.$?.['android:name'] === 'com.twiliovoicereactnative.VoiceFirebaseMessagingService'
-    )) {
+    if (
+      !mainApplication.service?.some(
+        (service) =>
+          service.$?.['android:name'] ===
+          'com.twiliovoicereactnative.VoiceFirebaseMessagingService'
+      )
+    ) {
       if (!mainApplication.service) {
         mainApplication.service = [];
       }
-      
+
       mainApplication.service.push({
-        $: {
-          'android:name': 'com.twiliovoicereactnative.VoiceFirebaseMessagingService',
+        '$': {
+          'android:name':
+            'com.twiliovoicereactnative.VoiceFirebaseMessagingService',
           'android:exported': 'false',
         },
-        'intent-filter': [{
-          action: [{
-            $: {
-              'android:name': 'com.google.firebase.MESSAGING_EVENT',
-            },
-          }],
-        }],
+        'intent-filter': [
+          {
+            action: [
+              {
+                $: {
+                  'android:name': 'com.google.firebase.MESSAGING_EVENT',
+                },
+              },
+            ],
+          },
+        ],
       });
     }
 
     // Add VoiceService
-    if (!mainApplication.service?.some(service => 
-      service.$?.['android:name'] === 'com.twiliovoicereactnative.VoiceService'
-    )) {
+    if (
+      !mainApplication.service?.some(
+        (service) =>
+          service.$?.['android:name'] ===
+          'com.twiliovoicereactnative.VoiceService'
+      )
+    ) {
       if (!mainApplication.service) {
         mainApplication.service = [];
       }
-      
+
       mainApplication.service.push({
         $: {
           'android:name': 'com.twiliovoicereactnative.VoiceService',
@@ -145,15 +177,47 @@ function withTwilioVoiceAndroid(config) {
       contents = prependToClass(contents, 'MainApplication', modApplicationVal);
     }
 
-    const hasOnCreate = !!findFunctionIndexes(contents, 'onCreate');
-    contents = hasOnCreate
-      ? appendToFunction(contents, 'onCreate', modApplicationOnCreateProxyCall)
-      : appendToClass(contents, 'MainApplication', modApplicationOnCreateFn);
+    const createFunIndexes = findFunctionIndexes(contents, 'onCreate');
+    const skipCreateFun =
+      !!createFunIndexes &&
+      contents
+        .substring(
+          createFunIndexes.openingBraceIndex,
+          createFunIndexes.closingBraceIndex
+        )
+        .includes(modApplicationOnCreateProxyCall);
+    if (!skipCreateFun) {
+      contents = createFunIndexes
+        ? appendToFunction(
+            contents,
+            'onCreate',
+            modApplicationOnCreateProxyCall
+          )
+        : appendToClass(contents, 'MainApplication', modApplicationOnCreateFn);
+    }
 
-    const hasOnTerminate = !!findFunctionIndexes(contents, 'onTerminate');
-    contents = hasOnTerminate
-      ? prependToFunction(contents, 'onTerminate', modApplicationOnTerminateProxyCall)
-      : appendToClass(contents, 'MainApplication', modApplicationOnTerminateFn);
+    const terminateFunIndexes = findFunctionIndexes(contents, 'onTerminate');
+    const skipTerminateFun =
+      !!terminateFunIndexes &&
+      contents
+        .substring(
+          terminateFunIndexes.openingBraceIndex,
+          terminateFunIndexes.closingBraceIndex
+        )
+        .includes(modApplicationOnTerminateProxyCall);
+    if (!skipTerminateFun) {
+      contents = terminateFunIndexes
+        ? prependToFunction(
+            contents,
+            'onTerminate',
+            modApplicationOnTerminateProxyCall
+          )
+        : appendToClass(
+            contents,
+            'MainApplication',
+            modApplicationOnTerminateFn
+          );
+    }
 
     return {
       ...config,
@@ -167,30 +231,64 @@ function withTwilioVoiceAndroid(config) {
   config = withMainActivity(config, (config) => {
     const mainActivity = config.modResults;
 
-    let contents = addImports(
-      mainActivity.contents,
-      modActivityImports,
-      false
-    );
+    let contents = addImports(mainActivity.contents, modActivityImports, false);
 
     if (!contents.includes(modActivityValDeclaration)) {
       contents = prependToClass(contents, 'MainActivity', modActivityVal);
     }
 
-    const hasOnCreate = !!findFunctionIndexes(contents, 'onCreate');
-    contents = hasOnCreate
-      ? appendToFunction(contents, 'onCreate', modActivityOnCreateProxyCall)
-      : appendToClass(contents, 'MainActivity', modActivityOnCreateFn);
+    const createFunIndexes = findFunctionIndexes(contents, 'onCreate');
+    const skipCreateFun =
+      !!createFunIndexes &&
+      contents
+        .substring(
+          createFunIndexes.openingBraceIndex,
+          createFunIndexes.closingBraceIndex
+        )
+        .includes(modActivityOnCreateProxyCall);
+    if (!skipCreateFun) {
+      contents = createFunIndexes
+        ? appendToFunction(contents, 'onCreate', modActivityOnCreateProxyCall)
+        : appendToClass(contents, 'MainActivity', modActivityOnCreateFn);
+    }
 
-    const hasOnDestroy = !!findFunctionIndexes(contents, 'onDestroy');
-    contents = hasOnDestroy
-      ? prependToFunction(contents, 'onDestroy', modActivityOnDestroyProxyCall)
-      : appendToClass(contents, 'MainActivity', modActivityOnDestroyFn);
+    const destroyFunIndexes = findFunctionIndexes(contents, 'onDestroy');
+    const skipDestroyFun =
+      !!destroyFunIndexes &&
+      contents
+        .substring(
+          destroyFunIndexes.openingBraceIndex,
+          destroyFunIndexes.closingBraceIndex
+        )
+        .includes(modActivityOnDestroyProxyCall);
+    if (!skipDestroyFun) {
+      contents = destroyFunIndexes
+        ? prependToFunction(
+            contents,
+            'onDestroy',
+            modActivityOnDestroyProxyCall
+          )
+        : appendToClass(contents, 'MainActivity', modActivityOnDestroyFn);
+    }
 
-    const hasOnNewIntent = !!findFunctionIndexes(contents, 'onNewIntent');
-    contents = hasOnNewIntent
-      ? prependToFunction(contents, 'onNewIntent', modActivityOnNewIntentProxyCall)
-      : appendToClass(contents, 'MainActivity', modActivityOnNewIntentFn);
+    const newIntentFunIndexes = findFunctionIndexes(contents, 'onNewIntent');
+    const skipNewIntentFun =
+      !!newIntentFunIndexes &&
+      contents
+        .substring(
+          newIntentFunIndexes.openingBraceIndex,
+          newIntentFunIndexes.closingBraceIndex
+        )
+        .includes(modActivityOnNewIntentProxyCall);
+    if (!skipNewIntentFun) {
+      contents = newIntentFunIndexes
+        ? appendToFunction(
+            contents,
+            'onNewIntent',
+            modActivityOnNewIntentProxyCall
+          )
+        : appendToClass(contents, 'MainActivity', modActivityOnNewIntentFn);
+    }
 
     return {
       ...config,
@@ -206,7 +304,9 @@ function withTwilioVoiceAndroid(config) {
 
 function addImports(source, imports, isJava) {
   const lines = source.split('\n');
-  const lineIndexWithPackageDeclaration = lines.findIndex((line) => line.match(/^package .*;?$/));
+  const lineIndexWithPackageDeclaration = lines.findIndex((line) =>
+    line.match(/^package .*;?$/)
+  );
   for (const javaImport of imports) {
     if (!source.includes(javaImport)) {
       const importStatement = `import ${javaImport}${isJava ? ';' : ''}`;
