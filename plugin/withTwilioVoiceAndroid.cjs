@@ -96,7 +96,6 @@ function withTwilioVoiceAndroid(config) {
     'android.permission.FOREGROUND_SERVICE_MICROPHONE',
     'android.permission.FOREGROUND_SERVICE_PHONE_CALL',
     'android.permission.POST_NOTIFICATIONS',
-    'android.permission.USE_FULL_SCREEN_INTENT',
     'android.permission.VIBRATE',
     'android.permission.WAKE_LOCK',
   ]);
